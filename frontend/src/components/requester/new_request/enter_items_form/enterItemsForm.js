@@ -1,270 +1,298 @@
 //React
-import React, { useState, useEffect } from 'react';
+import React, { useState } from "react";
 import { useHistory } from "react-router-dom";
+import { useEffect } from "react/cjs/react.development";
+import { useContext } from "react/cjs/react.development";
+import { useSessionStorageState } from "../../../../utils/useLocalStorageState";
+import { NewRequestContext } from "../../../context/new_request/newRequestProvider";
 
 //CSS
-import InputField from '../../../global_ui/input';
-import Navbar from '../../../global_ui/nav';
-import restyles from './requestItem.module.css';
-import { useSessionStorageState } from "../../../../utils/useLocalStorageState";
+import InputField from "../../../global_ui/input";
+import Navbar from "../../../global_ui/nav";
+import restyles from "./requestItem.module.css";
 
 function EnterItemsForm() {
-	const [err, setErr] = useState({
-        name:null,
-		check: null,
-        qt:null,
-		showErrors:false
-    })
-	const history = useHistory();
-	const [inputList, setInputList] = useState([{itemName: "", itemQty: ""}]);
-	
-	useEffect( () => {
-		const items = localStorage.getItem("items")
-		if (items){
-			setInputList(JSON.parse(items))
-		}
-	},[])
+  const history = useHistory();
+  const {
+    dispatch,
+    state: { itemsList, categories: cat },
+  } = useContext(NewRequestContext);
 
-	useEffect( () => {
-		localStorage.setItem("items",JSON.stringify(inputList))		
-	},[inputList])
+  const routehandler = (route) => {
+    history.push(route);
+  };
+  useEffect(() => {
+    if (cat.length !== 0) {
+      setcategories((categories) => {
+        let cats = {};
+        for (const c in cat) cats[cat[c]] = true;
+        console.log(cats);
+        return { ...categories, ...cats };
+      });
+    }
+  }, []);
 
-	const handleInputChange = (e, index) => {
-		const { name, value } = e.target;
-		if(name==="itemName"){
-			if(value===""){
-				setErr({...err,name: "Enter item name"})
-			}
-			else if(value.length<3){
-				setErr({...err,name: "Name should be atleast 3 characters"})
-			}
-			else{
-				setErr({...err,name: ""})
-			}
-		}
-		else{
-			if(value===""){
-				setErr({...err,qt: "Enter item quantity"})
-			}
-			else{
-				setErr({...err,qt: ""})
-			}
-		}
-		const list = [...inputList];
-		list[index][name] = value;
-		setInputList(list);
-	};
+  const [categories, setcategories] = useSessionStorageState("cat",{
+    MEDICINES: false,
+    GROCERIES: false,
+    MISC: false,
+  });
 
-	const handleRemoveClick = index => {
-		const list = [...inputList];
-		list.splice(index, 1);
-		setInputList(list);
-	};
+  const [inputList, setInputList] = useSessionStorageState('enter_items',itemsList);
+  const [err, setErr] = useState({
+    first: "",
+    second: "",
+    check: "",
+  });
+  const [itemName, setitemName] = useState("");
+  const [itemQty, setitemQty] = useState("");
 
-	const handleAddClick = () => {
-		console.log(err)
-		if(err.name===null){
-			if(err.qt===null){
-				setErr({
-					...err,
-					qt:"Empty Field",
-					name:"Empty Field"
-				})
-			}
-			else{
-				setErr({
-					...err,
-					qt:"Empty Field"
-				})
-			}
-		}
-		else{
-			if(err.qt===null){
-				setErr({
-					...err,
-					qt:"Empty Field"
-				})
-			}
-			else if(err.name.length===0 && err.qt.length===0){
-				setInputList([...inputList, { itemName: "", itemQty: "" }]);
-				setErr({
-					...err,
-					name:null,
-					qty:null
-				})
-			}
-		}
-	};
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
 
-	const [Medicine, setMedicine] = useState(sessionStorage.getItem('Medicine')==='true');
-	const [Grocery, setGrocery] = useState(sessionStorage.getItem('Grocery')==='true');
-	const [Misc,setMisc] = useState(sessionStorage.getItem('Misc')==='true');
-	const [categories,setcategories] = useSessionStorageState("tags",[]);
+    if (name === "itemName") {
+      setitemName(value);
+    }
+    if (name === "itemQty") {
+      setitemQty(value);
+    }
+  };
 
-	const OnCheckBox = (e)=>
-	{
-		if(e.target.name === "Medicine"){
-			sessionStorage.setItem('Medicine',`${e.target.checked}`);
-			setMedicine(e.target.checked); 
+  const handleAddClick = (e) => {
+    e.preventDefault();
 
-			if(e.target.checked === true){                    
-				setcategories( categories=>[...categories,"MEDICINES"]);
-			}
-			else{
-				let displayItems = JSON.parse(sessionStorage.getItem("tags"));
-				displayItems = displayItems.filter(e => e !== "MEDICINES");
-				setcategories([...displayItems])
-				sessionStorage.setItem("tags",JSON.stringify(displayItems))
-			}
-		}
+    if (itemQty !== "" && itemName !== "") {
+      let updatelist = [
+        ...inputList,
+        {
+          itemName: itemName,
+          quantity: itemQty,
+        },
+      ];
 
-		if(e.target.name === "Grocery"){
-			sessionStorage.setItem('Grocery',`${e.target.checked}`);
-			setGrocery(e.target.checked); 
+      setInputList(updatelist);
+      setitemName("");
+      setitemQty("");
 
-			if(e.target.checked === true){
-				setcategories( categories=>[...categories,"GROCERY"]);
-			}
-			
-			else{
-				let displayItems = JSON.parse(sessionStorage.getItem("tags"));
-				displayItems = displayItems.filter(e => e !== "GROCERY");
-				setcategories([...displayItems])
-				sessionStorage.setItem("tags",JSON.stringify(displayItems))
-			}
-		}
+      setErr({ first: "", second: "" });
+    } else {
+      if (itemName === "" && itemQty === "") {
+        setErr({
+          ...err,
+          second: "Please enter quantity",
+          first: "Please enter name",
+        });
+      } else if (itemQty === "") {
+        setErr({ ...err, second: "Please enter quantity" });
+      } else if (itemName === "") {
+        setErr({ ...err, first: "Please enter name" });
+      }
+    }
 
-		if(e.target.name === "Misc"){
-			sessionStorage.setItem('Misc',`${e.target.checked}`);
-			setMisc(e.target.checked); 
+    console.log(inputList);
+  };
 
-			if(e.target.checked === true){                     
-				setcategories( categories=>[...categories,"MISC."]);
-			}
-			else{
-				let displayItems = JSON.parse(sessionStorage.getItem("tags"));
-				displayItems = displayItems.filter(e => e !== "MISC.");
-				setcategories([...displayItems])
-				sessionStorage.setItem("tags",JSON.stringify(displayItems))
-			}
-		}
-	}
+  const onEdititem = (index) => {
+    setitemName(inputList[index].itemName);
+    setitemQty(inputList[index].quantity);
 
-	const onCancel = ()=>{
-		history.push('/');
-	}
+    const list = [...inputList];
+    list.splice(index, 1);
+    setInputList([...list]);
 
-	const onSubmit = (e) =>{
-		e.preventDefault();
-		if(inputList.length>0){
-			if(categories.length!=0){
-					setErr({
-						...err,
-						check:""
-					})
-					history.push('/address');
-				}
-				else{
-					setErr({
-						...err,
-						check:"Select the categories"
-					})
-				}
-			}
-			else{
-				setErr({
-					...err,
-					check:"Enter atleast a single item"
-				})
-			}
-	}
+    setErr({ first: "", second: "" });
+  };
 
-	return (
-		<div>
- 		{/* Navbar */}
-		 
-		<Navbar back='/list_type' backStyle={{ color: "white" }} title="Enter Items" titleStyle={{ color: "white" }} style={{ backgroundColor: "#79CBC5", marginBottom: "10px" }}/>
-		
-		<div className={restyles.container}>
-			{/* Prompt Text */}
-				<div className={restyles.rmessage}>
-					<p style={{fontWeight: 'bold'}}>Please choose the items you want to request</p>
-				</div>
-				
+  const onDelete = (index) => {
+    const list = [...inputList];
+    list.splice(index, 1);
+    setInputList([...list]);
+  };
 
-			<div style={{marginTop: '5%'}} className={restyles.rlistname}>
-				<div className={restyles.row}>
-					<div className={restyles.col}>
-						<p style={{fontWeight: 'bold'}}>item name</p>
-					</div>
-					<div className={restyles.col}>
-						<p style={{fontWeight: 'bold'}}>strips/qty</p>
-					</div>
-					<div className={restyles.col}>
-						<p style={{fontWeight: 'bold'}}>Add/Delete</p>
-					</div>
-				</div>
+  const _handleCheckBox = (e) => {
+    let data = { ...categories };
+    data[e.target.name] = e.target.checked;
+    setcategories(data);
+  };
 
-				<div className={restyles.container}>
-					{inputList.map((x, i) => {
-						return (
-							<div key={inputList.id}>
-								<div className={restyles.row} style={{marginTop: '2%'}}>
-									<div className={restyles.col1}>
-										<InputField type="text" placeholder="Item Name..." name="itemName" value={x.itemName} onChange={e => handleInputChange(e, i)} error={err.name}/>
-									</div>
-									<div className={restyles.col1}>
-										<InputField type="text" placeholder="Item qty..." name="itemQty" value={x.itemQty} onChange={e => handleInputChange(e, i)} error={err.qt}/>
-									</div>
-									<div className={restyles.col1}>
-										{inputList.length - 1 === i && <button style={{marginRight: '2%', backgroundColor: 'green', color: 'white', fontWeight: 'bold'}} type="button" className={restyles.btn} onClick={handleAddClick} value="Add">Add</button>}
-										{inputList.length !== 1 && <button style={{marginLeft: '1%', backgroundColor: 'red', color: 'white', fontWeight: 'bold'}} type="button" className={restyles.btn} onClick={() => handleRemoveClick(i)} >X</button>}
-									</div>
-								</div>
-							</div>
-						)
-					})}
-				</div>
+  const onProceed = (e) => {
+    e.preventDefault();
+    if (inputList.length === 0) {
+      setErr({
+        ...err,
+        check: "Please enter atleast one item",
+      });
+    } else {
+      if (categories.MEDICINES || categories.MISC || categories.GROCERIES) {
+        let list = [];
+        for (const cat in categories) {
+          if (categories[cat]) list.push(cat);
+        }
+        dispatch({
+          type: "ENTER_ITEMS",
+          categories: list,
+          itemsList: inputList,
+        });
+        history.push("address");
+      } else {
+        setErr({
+          ...err,
+          check: "Please select a category",
+        });
+      }
+    }
+  };
 
-				<div className={restyles.up_list} style={{marginTop: '5%'}}>
-					<div className={restyles.up_list}> 
-						<div>
-							<label className={restyles.up_check_label}>Medicine
-								<input type="checkbox" name="Medicine" checked={Medicine} onChange = {OnCheckBox} />
-								<span className={`${restyles.up_check} ${restyles.check_1}`}></span>
-							</label>
-						</div>
-						<div> 
-							<label className={restyles.up_check_label}>Grocery
-								<input type="checkbox" name="Grocery" checked={Grocery} onChange = {OnCheckBox} />
-								<span className={`${restyles.up_check} ${restyles.check_2}`}></span>
-							</label>
-						</div>
-						<div> 
-							<label className={restyles.up_check_label}>Misc.
-								<input type="checkbox" name="Misc" checked={Misc} onChange = {OnCheckBox}/>
-								<span className={`${restyles.up_check} ${restyles.check_3}`}></span>
-							</label>
-						</div>
-					</div>
-				</div>
+  return (
+    <div>
+      <Navbar back="list_type" title="Enter Items" />
+      <div style={{ paddingLeft: "1rem", paddingRight: "1rem" }}>
+        <p
+          style={{
+            marginTop: "2rem",
+            fontSize: "1.2rem",
+            textAlign: "center",
+            fontWeight: "bold",
+          }}
+        >
+          Please enter the items you want to request
+        </p>
 
-				<p className={restyles.up_error_msg}>{err.check ? err.check : ""}</p>
+        <p style={{ textAlign: "center", color: "red" }}>{err.check}</p>
+        <div className={restyles.inputArea}>
+          <InputField
+            type="text"
+            placeholder="Item Name"
+            name="itemName"
+            value={itemName}
+            error={err.first}
+            onChange={(e) => handleInputChange(e)}
+          />
 
-				<div className={restyles.container}>
-					<div className={restyles.row} style={{marginTop: '10%', marginBottom: '2%'}}>
-					<div className={restyles.col} onClick={onCancel}>
-							<button type="button" style={{backgroundColor: 'red', color: 'white'}} className={restyles.btn}>Cancel</button>
-						</div>
-						<div className={restyles.col} onClick={onSubmit}>
-							<button type="button" style={{backgroundColor: 'green', color: 'white'}} className={restyles.btn}>Proceed</button>
-						</div>
-					</div>
-				</div>
-			</div>
-		</div>
-	</div>
-	)
+          <InputField
+            type="text"
+            placeholder="Item quantity"
+            name="itemQty"
+            value={itemQty}
+            error={err.second}
+            onChange={(e) => handleInputChange(e)}
+          />
+
+          <button
+            style={{
+              marginRight: "2%",
+              backgroundColor: "green",
+              color: "white",
+              fontWeight: "bold",
+            }}
+            type="button"
+            className={restyles.btn}
+            onClick={(e) => handleAddClick(e)}
+            value="Add"
+          >
+            Add
+          </button>
+            
+          {inputList.map((x, index) => {
+            return (
+              <div className={restyles.card} key={x.itemName}>
+                    <span>{x.itemName}  |  {x.quantity} </span>
+                 
+                  <div >
+                    <span>
+                      <i
+                        className="fas fa-pen"
+                        aria-hidden="true"
+                        onClick={() => onEdititem(index)}
+                      ></i>{" "}
+                      &nbsp; &nbsp;
+                      <i
+                        className="far fa-trash-alt"
+                        onClick={() => onDelete(index)}
+                      ></i>
+                    </span>
+                  </div>
+                </div>
+             
+            );
+          })}
+
+        </div>
+          
+       
+
+        <div className={restyles.checkBoxArea}>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+            }}
+          >
+            <input
+              checked={categories.MEDICINES}
+              onChange={_handleCheckBox}
+              name="MEDICINES"
+              type="checkbox"
+            />
+            <p>MEDICINES</p>
+          </div>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+            }}
+          >
+            <input
+              checked={categories.GROCERIES}
+              onChange={_handleCheckBox}
+              name="GROCERIES"
+              type="checkbox"
+            />
+
+            <p>GROCERIES</p>
+          </div>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+            }}
+          >
+            <input
+              checked={categories.MISC}
+              onChange={_handleCheckBox}
+              name="MISC"
+              type="checkbox"
+            />
+
+            <p>MISC</p>
+          </div>
+        </div>
+
+        <div className={restyles.buttonArea}>
+          <button
+            type="button"
+            onClick={() => routehandler("/")}
+            style={{ backgroundColor: "red", color: "white" }}
+            className={restyles.btn}
+          >
+            Cancel
+          </button>
+
+          <button
+            type="button"
+            style={{ backgroundColor: "green", color: "white" }}
+            className={restyles.btn}
+            onClick={onProceed}
+          >
+            Proceed
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default EnterItemsForm;
